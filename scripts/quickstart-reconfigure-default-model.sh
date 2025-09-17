@@ -57,6 +57,10 @@ fi
 api_key=$(echo -n "$api_key" | base64 | tr -d '\n' | tr -d ' ')
 
 kubectl patch secret azure-openai-secret -p '{"data":{"token":"'$api_key'"}}'
-API_KEY="$api_key" BASE_URL="$base_url" MODEL_TYPE="$model_type" MODEL_VERSION="$model_version" API_VERSION="$API_VERSION" envsubst < samples/quickstart/default-model.yaml | kubectl apply -f -
+if [ "$model_type" = "azure" ]; then
+    API_KEY="$api_key" BASE_URL="$base_url" MODEL_TYPE="$model_type" MODEL_VERSION="$model_version" API_VERSION="$API_VERSION" envsubst < samples/quickstart/azure.model.yaml | kubectl apply -f -
+else
+    API_KEY="$api_key" BASE_URL="$base_url" MODEL_TYPE="$model_type" MODEL_VERSION="$model_version" envsubst < samples/quickstart/openai.model.yaml | kubectl apply -f -
+fi
 
 echo -e "${green}✔${nc} default model is re-configured with fresh credentials"

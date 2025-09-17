@@ -189,8 +189,12 @@ quickstart() {
             
             if [ -n "$api_key" ] && [ -n "$base_url" ]; then
                 # Use envsubst to apply the configuration
-                API_KEY="$api_key" BASE_URL="$base_url" MODEL_TYPE="$model_type" MODEL_VERSION="$model_version" API_VERSION="$API_VERSION" envsubst < samples/quickstart/default-model.yaml | kubectl apply -f -
-                
+                API_KEY="$api_key" envsubst < samples/quickstart/secret.yaml | kubectl apply -f -
+                if [ "$model_type" = "azure" ]; then
+                    BASE_URL="$base_url" MODEL_TYPE="$model_type" MODEL_VERSION="$model_version" API_VERSION="$API_VERSION" envsubst < samples/quickstart/azure.model.yaml | kubectl apply -f -
+                else
+                    BASE_URL="$base_url" MODEL_TYPE="$model_type" MODEL_VERSION="$model_version" envsubst < samples/quickstart/openai.model.yaml | kubectl apply -f -
+                fi
                 echo -e "${green}✔${nc} default model configured"
             else
                 echo -e "${yellow}warning${nc}: skipping default model setup"
