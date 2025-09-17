@@ -183,6 +183,8 @@ prompt_choice_with_default() {
     done
 }
 
+# Array to hold manual instructions for installed tools
+MANUAL_INSTRUCTIONS=()
 
 quickstart() {
     # Check if we're in the project root
@@ -212,28 +214,25 @@ quickstart() {
             log_info "Using the following environment variables from .ark.env" "$details"
         fi
     fi
+    # Ensure manual instructions are always printed before the script ends
+    trap print_manual_instructions EXIT
 
     # Check essential development tools
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        check_tool "uv" "brew install uv" "uv"
-    else
-        check_tool "uv" "curl -LsSf https://astral.sh/uv/install.sh | sh && source ~/.profile" "uv"
-    fi
-
-    check_tool "node" "brew install node" "node"
+    check_tool "brew" "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+    check_tool "uv" "brew install uv"
+    check_tool "node" "brew install node"
     check_tool "timeout" "brew install coreutils" 
     check_tool "ruff" "brew install ruff"
-    check_tool "golang" "brew install go" "go"
+    check_tool "go" "brew install go"
     check_tool "envsubst" "brew install gettext"
     check_tool "yq" "brew install yq"
     check_tool "kubectl" "brew install kubectl"
     check_tool "docker" "brew install --cask docker"
     check_tool "helm" "brew install helm"
     check_tool "npm" "brew install node && npm install -g typescript && npm i -D @types/node"
-    check_tool "fark" "make fark-build && make fark-install"
+    check_tool "fark" "make fark-build && make fark-install" "Add \$HOME/.local/bin to your PATH"
     check_tool "ark" "make ark-cli-install"
     check_tool "java" "brew install openjdk"
-    check_tool "java" "brew install openjdk" "java -version"
     check_optional_tool "k9s" "brew install k9s"
     check_optional_tool "chainsaw" "brew tap kyverno/chainsaw https://github.com/kyverno/chainsaw && brew install kyverno/chainsaw/chainsaw"
 
@@ -499,64 +498,56 @@ is_installed() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Helper function to check and optionally install optional tools
-check_optional_tool() {
-    local tool_name="$1"
+check_tool_common() {
+    local cmd="$1"
     local install_cmd="$2"
-    local check_cmd="${3:-$tool_name}"
+    local instructions="$3"
+    local required="${4:-true}"
     
-    if command -v "$check_cmd" > /dev/null 2>&1; then
-        echo -e "${green}✔${nc} $tool_name installed"
-        return 0
+    if is_installed $cmd; then
+        log_info "$cmd already installed${dim} at $(command -v $cmd)${nc}"
     else
-        echo -e "${yellow}warning${nc}: $tool_name not found"
-        if prompt_yes_no "install $tool_name? (Y/n): "; then
-            echo "installing $tool_name..."
-            if eval "$install_cmd" > /dev/null 2>&1; then
-                echo -e "${green}✔${nc} $tool_name installed successfully"
-                return 0
+        log_warn "$cmd not found"
+        if prompt_yes_no "Install $cmd?"; then
+            log_info "Installing $cmd..."
+            if eval "$install_cmd" >/dev/null 2>&1; then
+                log_ok "$cmd installed successfully at $(command -v $cmd)"
+                if [[ -n "$instructions" ]]; then
+                    MANUAL_INSTRUCTIONS+=("$instructions")
+                fi
             else
-                echo -e "${red}error${nc}: failed to install $tool_name"
-                echo "install manually with: $install_cmd"
-                echo -e "${yellow}note${nc}: $tool_name is optional, continuing..."
-                return 0
+                if [ "$required" = true ]; then
+                    error_exit "Failed to install $cmd" "Install manually with: $install_cmd"
+                else
+                    log_warn "Failed to install $cmd" "Install manually with: $install_cmd"
+                    log_warn "$cmd is optional. Continuing..."
+                fi
             fi
         else
-            echo -e "${yellow}warning${nc}: skipping optional tool $tool_name"
-            return 0
+            if [ "$required" = true ]; then
+                error_exit "$cmd is required for development" "Install with: $install_cmd"
+            else
+                log_warn "Skipping optional dependency $cmd. Continuing..."
+            fi
         fi
     fi
 }
 
-# Helper function to check and optionally install tools
 check_tool() {
-    local tool_name="$1"
-    local install_cmd="$2"
-    local check_cmd="${3:-$tool_name}"
+    check_tool_common "$1" "$2" "$3" true
+}
 
-    # set command_flags to have "-v" if check_cmd has no spaces
-    local command_flags=(); ! (echo "$check_cmd" | grep -q ' ') && command_flags=("-v")
+check_optional_tool() {
+    check_tool_common "$1" "$2" "$3" false
+}
 
-    if command $command_flags $check_cmd > /dev/null 2>&1; then
-        echo -e "${green}✔${nc} $tool_name installed"
-        return 0
-    else
-        echo -e "${yellow}warning${nc}: $tool_name not found"
-        if prompt_yes_no "install $tool_name? (Y/n): "; then
-            echo "installing $tool_name..."
-            if eval "$install_cmd" > /dev/null 2>&1; then
-                echo -e "${green}✔${nc} $tool_name installed successfully"
-                return 0
-            else
-                echo -e "${red}error${nc}: failed to install $tool_name"
-                echo "install manually with: $install_cmd"
-                exit 1
-            fi
-        else
-            echo -e "${red}error${nc}: $tool_name is required for development"
-            echo "install with: $install_cmd"
-            exit 1
-        fi
+print_manual_instructions() {
+    if [ ${#MANUAL_INSTRUCTIONS[@]} -gt 0 ]; then
+        local details=""
+        for instruction in "${MANUAL_INSTRUCTIONS[@]}"; do
+            details+="${instruction}\n"
+        done
+        log_warn "Please manually carry out the instructions below:" "$details"
     fi
 }
 
