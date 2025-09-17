@@ -70,10 +70,14 @@ prompt_freeform() {
     local default="${2:-}"
     local reply
 
-    if [ -n "${ARK_QUICKSTART_USE_DEFAULTS}" ]; then
+    # If ARK_QUICKSTART_USE_DEFAULTS is set and default is not empty, use default
+    if [ -n "${ARK_QUICKSTART_USE_DEFAULTS}" ] && [ -n "$default" ]; then
         reply="$default"
     else
-        printf "    ${b}${bg_white}${black}[?]${nc} $message (default: $default): "
+        if [ -n "$default" ]; then
+            message+=" (default: $default)"
+        fi
+        printf "    ${b}${bg_white}${black}[?]${nc} $message: " >&2
         read -r reply < /dev/tty
     fi
 
