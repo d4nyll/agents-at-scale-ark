@@ -243,42 +243,24 @@ quickstart() {
         log_info "Docker daemon running"
     fi
 
-    # Check if kubernetes cluster is accessible
+    # Create local Kubernetes cluster
     if kubectl cluster-info > /dev/null 2>&1; then
-        echo -e "${green}✔${nc} kubernetes cluster accessible"
+        log_info "Kubernetes cluster accessible" "$(kubectl cluster-info)"
     else
-        echo -e "${yellow}warning${nc}: kubernetes cluster not accessible"
-        echo "make sure your cluster is running and kubectl context is set"
-        echo "for local development"
-        # check_tool "minikube"
-        if is_installed minikube; then
-            echo -e "${green}✔${nc} Minikube is installed"
-            minikube start
-        # check_tool "kind"
-        elif is_installed kind; then
-            echo -e "${green}✔${nc} Kind is installed"
+        log_warn "No Kubernetes cluster is accessible"
+        choice=$(prompt_choice_with_default "Choose a tool to create a cluster" "default" "kind" "minikube")
+        if [ "$choice" = "kind" ]; then
+            check_tool "kind" "brew install kind"
+            log_ok "Kind is installed"
+            log_info "Creating Kind cluster"
             kind create cluster
-
-        else
-           echo -e "${yellow}⚠${nc} Neither Minikube nor Kind is installed"
-            echo "Choose the Kubernetes tool to install:"
-            echo "1) Minikube (default)"
-            echo "2) Kind"
-
-            read -r -p "Enter choice [1/2]: " choice
-
-            choice=${choice:-1}  # Default to 1 if empty
-
-            if [[ "$choice" == "1" ]]; then
-                brew install minikube
-                minikube start
-            elif [[ "$choice" == "2" ]]; then
-                brew install kind
-                kind create cluster
-            else
-                echo "Invalid choice. Exiting."
-                exit 1
-            fi
+            log_info "Kind cluster created"
+        elif [ "$choice" = "minikube" ]; then
+            check_tool "minikube" "brew install minikube"
+            log_ok "Minikube is installed"
+            log_info "Creating Minikube cluster"
+            minikube start
+            log_info "Minikube cluster created"
         fi
     fi
 
@@ -350,7 +332,7 @@ quickstart() {
             # Add a simple tool to avoid empty tools array that causes Azure OpenAI API errors
             kubectl apply -f samples/tools/get-coordinates.yaml > /dev/null 2>&1 || true
             kubectl patch agent sample-agent --type='merge' -p='{"spec":{"tools":[{"type":"custom","name":"get-coordinates"}]}}'
-                
+            
             log_ok "Sample agent re-configured"
         else
             log_warn "No sample agent found"
@@ -503,7 +485,7 @@ check_tool_common() {
     local install_cmd="$2"
     local instructions="$3"
     local required="${4:-true}"
-    
+
     if is_installed $cmd; then
         log_info "$cmd already installed${dim} at $(command -v $cmd)${nc}"
     else
