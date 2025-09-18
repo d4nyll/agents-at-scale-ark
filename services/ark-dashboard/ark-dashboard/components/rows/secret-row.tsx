@@ -136,18 +136,20 @@ export function SecretRow({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-8 w-8 p-0",
-                    isInUse && "opacity-50 cursor-not-allowed"
-                  )}
-                  onClick={() => !isInUse && setDeleteConfirmOpen(true)}
-                  disabled={isInUse}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-8 p-0",
+                      isInUse && "opacity-50 cursor-not-allowed"
+                    )}
+                    onClick={() => !isInUse && setDeleteConfirmOpen(true)}
+                    disabled={isInUse}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
                 {isInUse ? "Cannot delete secret in use" : "Delete secret"}

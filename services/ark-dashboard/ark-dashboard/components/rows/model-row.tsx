@@ -158,18 +158,20 @@ export function ModelRow({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-8 w-8 p-0",
-                      isActive && "opacity-50 cursor-not-allowed"
-                    )}
-                    onClick={() => !isActive && setDeleteConfirmOpen(true)}
-                    disabled={isActive}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-8 w-8 p-0",
+                        isActive && "opacity-50 cursor-not-allowed"
+                      )}
+                      onClick={() => !isActive && setDeleteConfirmOpen(true)}
+                      disabled={isActive}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
                   {isActive ? "Cannot delete model in use" : "Delete model"}
