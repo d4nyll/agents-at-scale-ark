@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { toast } from "@/components/ui/use-toast"
+import { ToastAction } from "@/components/ui/toast"
 import { ModelEditor } from "@/components/editors"
 import { modelsService, agentsService, type Model, type Agent, type ModelCreateRequest, type ModelUpdateRequest } from "@/lib/services"
 import { ModelCard } from "@/components/cards"
@@ -21,6 +22,7 @@ export const ModelsSection = forwardRef<{ openAddEditor: () => void }, ModelsSec
   const [loading, setLoading] = useState(true)
   const showLoading = useDelayedLoading(loading)
   const [showCompactView, setShowCompactView] = useState(false)
+  const [shownHelpToast, setShownHelpToast] = useState<string[]>([])
   
   const viewOptions: ToggleOption[] = [
     { id: "compact", label: "compact view", active: !showCompactView },
@@ -34,6 +36,7 @@ export const ModelsSection = forwardRef<{ openAddEditor: () => void }, ModelsSec
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
+      setShownHelpToast([]) // Reset toast state when namespace changes
       try {
         const [modelsData, agentsData] = await Promise.all([
           modelsService.getAll(namespace),
@@ -55,6 +58,66 @@ export const ModelsSection = forwardRef<{ openAddEditor: () => void }, ModelsSec
 
     loadData()
   }, [namespace])
+
+  // Show toast when no models exist, no default model exists, or the default model has a status of 'error'
+  useEffect(() => {
+    if (!loading) {
+      if (models.length === 0) {
+        if (!shownHelpToast.includes("no-models")) {
+          toast({
+            variant: "default",
+            title: "No Models Found",
+            description: "Get started by creating your first model. We support all OpenAI API compatible models (including Azure OpenAI, Claude, Gemini), and AWS Bedrock.",
+            action: (
+              <ToastAction
+                altText="Create a new model"
+                onClick={() => setModelEditorOpen(true)}
+              >
+                Create Model
+              </ToastAction>
+            )
+          })
+          setShownHelpToast(prev => [...prev, "no-models"])
+        }
+      // If there are no default model
+      } else if (!models.find(m => m.name === 'default')) {
+        if (!shownHelpToast.includes("no-default-model")) {
+          toast({
+            variant: "default",
+            title: "No Default Model",
+            description: "Create a default model to get started. We support all OpenAI API compatible models (including Azure OpenAI, Claude, Gemini), and AWS Bedrock.",
+            action: (
+              <ToastAction
+                altText="Create a default model"
+                onClick={() => setModelEditorOpen(true)}
+              >
+                Create Model
+              </ToastAction>
+            )
+          })
+          setShownHelpToast(prev => [...prev, "no-default-model"])
+        }
+      // If the default model has an error
+      } else if (models.find(m => m.name === 'default')?.status === 'error') {
+        if (!shownHelpToast.includes("default-model-error")) {
+        toast({
+          variant: "default",
+          title: "Default Model Error",
+          description: "Your default model has an error. Create a new model to get started. We support all OpenAI API compatible models (including Azure OpenAI, Claude, Gemini), and AWS Bedrock.",
+          action: (
+            <ToastAction
+              altText="Create a new model"
+              onClick={() => setModelEditorOpen(true)}
+            >
+              Create Model
+            </ToastAction>
+          )
+          })
+          setShownHelpToast(prev => [...prev, "default-model-error"])
+        }
+      }
+    }
+  }, [loading, models, shownHelpToast])
 
   const handleSaveModel = async (model: ModelCreateRequest | (ModelUpdateRequest & { id: string })) => {
     try {
